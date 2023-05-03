@@ -1,67 +1,41 @@
 const mineflayer = require('mineflayer')
-
 const bot = mineflayer.createBot({
   host: 'ally0.ploudos.me',
   username: 'AllyServer',
 })
 
-// Configurações do bot
-let isAfk = true
-let currentYaw = 0
-
-// Função para mover o bot
-function moveBot() {
-  if (!isAfk) return
-  // Move o bot aleatoriamente
-  const direction = Math.floor(Math.random() * 4)
-  switch (direction) {
-    case 0:
-      bot.setControlState('forward', true)
-      break
-    case 1:
-      bot.setControlState('back', true)
-      break
-    case 2:
-      currentYaw += 90
-      bot.look(currentYaw, 0)
-      break
-    case 3:
-      currentYaw -= 90
-      bot.look(currentYaw, 0)
-      break
-  }
-  // Desativa os controles após um tempo
-  setTimeout(() => {
-    bot.clearControlStates()
-    setTimeout(moveBot, 2000)
-  }, 1000)
+// Função para definir aleatoriamente as teclas de controle
+function randomMovement() {
+  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min)
+  bot.setControlState('forward', randInt(0, 1))
+  bot.setControlState('back', randInt(0, 1))
+  bot.setControlState('left', randInt(0, 1))
+  bot.setControlState('right', randInt(0, 1))
+  bot.setControlState('jump', randInt(0, 1))
 }
 
-// Evento de chat
-bot.on('chat', (username, message) => {
-  if (username === bot.username) return
-  // Responde ao chat
-  bot.chat(message)
-  // Ativa/desativa o modo afk
-  if (message === 'afk') {
-    isAfk = !isAfk
-    if (isAfk) {
-      moveBot()
-    } else {
-      bot.clearControlStates()
-    }
+// Configuração do servidor web
+const express = require('express')
+const app = express()
+const port = 3000
+
+// Endpoint para verificar o status do bot
+app.get('/ping', (req, res) => {
+  if (bot && bot.entity) {
+    res.send(`Bot está online. Jogador: ${bot.entity.username}`)
+  } else {
+    res.send('Bot está offline.')
   }
 })
 
-// Evento de detecção de entidades
-bot.on('entitySpawn', entity => {
-  // Verifica se é um mob hostil
-  if (entity.type === 'mob' && entity.kind === 'Hostile') {
-    // Ataca o mob
-    bot.attack(entity)
-    // Faz o bot olhar na direção do mob
-    setTimeout(bot.lookAt(entity.position.offset(0, entity.height, 0)), 500)
-  }
+// Iniciar o servidor web
+app.listen(port, () => {
+  console.log(`Servidor web iniciado na porta ${port}`)
+})
+
+// Andar aleatoriamente quando o bot estiver conectado
+bot.on('spawn', () => {
+  setInterval(randomMovement, 500) // Andar aleatoriamente a cada 500ms
 })
 
 // Log de erros e kick
